@@ -1,0 +1,9 @@
+{
+  "name": "homespeed",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static apartment listing prototype for SPEEDHOME-style rental data.",
+  "scripts": {
+    "start": "powershell -ExecutionPolicy Bypass -File serve.ps1"
+  }
+}

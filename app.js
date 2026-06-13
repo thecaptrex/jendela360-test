@@ -378,7 +378,7 @@ function parseListingsFromText(rawText, sourceUrl) {
 
   const patterns = [
     // Strict pattern: name + size/type + beds + baths + parking + price
-    /(?:VERIFIED\s*)?(?:\W{0,4}\s*)?(?:(?:ZERO DEPOSIT|COOKING READY)\s+)*([A-Z0-9][A-Za-z0-9@.'()&/\-\s,]{3,90}?)\s+((?:\d{2,4}(?:,\d{3})?|\d{3,4})\s*sqft|(?:SMALL|MEDIUM|MASTER)\s+(?:SHARED|PRIVATE))\s+(\d+)\s+(\d+)\s+(\d+)?[\s\w&/@.'(),+\-]{0,180}?RM\s*([\d,]+)\s*\/\s*month/g,
+    /(?:VERIFIED\s*)?(?:\W{0,4}\s*)?(?:(?:ZERO DEPOSIT|COOKING READY)\s+)*([A-Z0-9][A-Za-z0-9@.'()&/\-\s,]{3,90}?)\s+((?:\d{1,3}(?:,\d{3})?|\d{3,4})\s*sqft|(?:SMALL|MEDIUM|MASTER)\s+(?:SHARED|PRIVATE))\s+(\d+)\s+(\d+)\s+(\d+)?[\s\w&/@.'(),+\-]{0,180}?RM\s*([\d,]+)\s*\/\s*month/g,
     // Flexible pattern: name + beds + baths + (maybe parking) + price (size optional)
     /(?:VERIFIED\s*)?(?:\W{0,4}\s*)?(?:(?:ZERO DEPOSIT|COOKING READY)\s+)*([A-Z0-9][A-Za-z0-9@.'()&/\-\s,]{3,90}?)\s+(\d+)\s+(\d+)\s+(\d+)?[\s\w&/@.'(),+\-]{0,120}?RM\s*([\d,]+)\s*\/\s*month/g,
     // Loose pattern: name + RM price (minimal requirements)
@@ -416,17 +416,7 @@ function parseListingsFromText(rawText, sourceUrl) {
       processedKeys.add(dedupeKey);
 
       const roomType = rawSize && /SMALL|MEDIUM|MASTER/i.test(rawSize);
-      let sqft = 0;
-      if (rawSize) {
-        if (roomType) {
-          sqft = estimateRoomSize(rawSize);
-        } else {
-          const parsed = Number(String(rawSize).replace(/[^\d]/g, ""));
-          sqft = Number.isFinite(parsed) && parsed > 0 ? parsed : extractSizeNear(rawText, match.index);
-        }
-      } else {
-        sqft = extractSizeNear(rawText, match.index);
-      }
+      const sqft = roomType ? estimateRoomSize(rawSize) : (rawSize ? Number(rawSize.replace(/[^\d]/g, "")) : 0);
       const bedrooms = roomType ? 1 : (beds ? Number(beds) : 1);
       const area = inferArea(rawName, sourceUrl);
       const name = rawName
@@ -450,13 +440,13 @@ function parseListingsFromText(rawText, sourceUrl) {
         sqft,
         priceMonth: Number(price.replace(/,/g, "")),
         priceDay: null,
-      priceYear: null,
-      furniture: inferFurnishing(text, pattern.lastIndex),
-      unitType: bedroomLabel(bedrooms),
-      speedhome_url: speedhomeUrl,
-      url: speedhomeUrl,
-      source: "Live scrape",
-    });
+        priceYear: null,
+        furniture: inferFurnishing(text, match, name),
+        unitType: bedroomLabel(bedrooms),
+        speedhome_url: speedhomeUrl,
+        url: speedhomeUrl,
+        source: "Live scrape",
+      });
     }
   }
 
@@ -545,17 +535,6 @@ function estimateRoomSize(rawSize) {
   return 100;
 }
 
-function extractSizeNear(rawText, index) {
-  try {
-    const window = rawText.slice(Math.max(0, index - 300), index + 300);
-    const m = window.match(/(\d{2,5}(?:[,\.\s]\d{3})?)[\s]*?(?:sq\s*\.?\s*ft\b|sqft\b|sf\b|ft2\b|m2\b|sqm\b|sq\s*m\b|\u00B2)/i);
-    if (m) return Number(String(m[1]).replace(/[^\d]/g, ""));
-  } catch (e) {
-    // ignore
-  }
-  return 0;
-}
-
 function inferArea(name, sourceUrl) {
   const parts = name.split(",").map((part) => part.trim()).filter(Boolean);
   if (parts.length > 1) return parts[parts.length - 1];
@@ -563,11 +542,14 @@ function inferArea(name, sourceUrl) {
   return slug.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function inferFurnishing(text, index) {
-  const nearby = text.slice(Math.max(0, index - 220), index + 220);
+function inferFurnishing(text, match, fallbackText = "") {
+  const start = Math.max(0, match.index - 800);
+  const end = Math.min(text.length, match.index + match[0].length + 800);
+  const nearby = `${text.slice(start, end)} ${fallbackText}`;
   if (/fully furnished/i.test(nearby)) return "Fully Furnished";
-  if (/partially furnished/i.test(nearby)) return "Partially Furnished";
-  if (/unfurnished/i.test(nearby)) return "Unfurnished";
+  if (/partially furnished/i.test(nearby) || /partialy furnished/i.test(nearby)) return "Partially Furnished";
+  if (/\bnot\s+furnished\b/i.test(nearby) || /unfurnished/i.test(nearby)) return "Not Furnished";
+  if (/\bfurnished\b/i.test(nearby)) return "Fully Furnished";
   return "Furniture status unavailable";
 }
 
