@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Homespeed | SPEEDHOME Apartment Search</title>
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-shell hero">
+      <nav class="topbar" aria-label="Primary navigation">
+        <a class="brand" href="#" aria-label="Homespeed home">
+          <span class="brand-mark">H</span>
+          <span>Homespeed</span>
+        </a>
+        <div class="nav-actions">
+          <button class="icon-button" id="themeButton" type="button" aria-label="Toggle theme" title="Toggle theme">
+            <i data-lucide="moon"></i>
+          </button>
+          <a class="ghost-link" href="https://speedhome.com" target="_blank" rel="noreferrer">
+            <i data-lucide="external-link"></i>
+            SPEEDHOME
+          </a>
+        </div>
+      </nav>
+
+      <section class="hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Malaysia-wide rental intelligence</p>
+          <h1>Homespeed</h1>
+          <p class="hero-subtitle">
+            Search apartments, compare rents by bedroom type, and export SPEEDHOME listing data without requiring visitors to sign in.
+          </p>
+          <div class="hero-metrics" aria-label="Homespeed highlights">
+            <span><strong id="heroListingCount">0</strong> listings indexed</span>
+            <span><strong id="heroAreaCount">0</strong> areas</span>
+            <span><strong>CSV</strong> + <strong>XLSX</strong> export</span>
+          </div>
+        </div>
+        <div class="hero-media" aria-label="Premium apartment interior preview">
+          <img
+            src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=82"
+            alt="Bright modern apartment living area"
+          />
+          <div class="media-panel">
+            <span>Best fair price</span>
+            <strong id="heroFairPrice">RM 0</strong>
+            <small>Based on lower-quartile rent for the active result set.</small>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <main class="app-shell">
+      <section class="search-band" aria-label="Search listings">
+        <form id="searchForm" class="search-form" autocomplete="off">
+          <div class="search-field">
+            <i data-lucide="search"></i>
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="Search apartment, area, or paste a SPEEDHOME URL"
+              aria-label="Search apartment, area, or SPEEDHOME URL"
+              list="suggestions"
+            />
+            <datalist id="suggestions"></datalist>
+          </div>
+          <button class="primary-button" type="submit">
+            <i data-lucide="radar"></i>
+            Search
+          </button>
+        </form>
+        <div class="search-controls">
+          <label class="switch">
+            <input id="liveScrapeToggle" type="checkbox" checked />
+            <span>Live scrape attempt</span>
+          </label>
+          <div class="export-actions" aria-label="Download listing data">
+            <button id="downloadCsv" class="secondary-button" type="button">
+              <i data-lucide="file-down"></i>
+              CSV
+            </button>
+            <button id="downloadXlsx" class="secondary-button" type="button">
+              <i data-lucide="sheet"></i>
+              XLSX
+            </button>
+          </div>
+        </div>
+        <p id="statusMessage" class="status-message" role="status">
+          Ready. Search a place like Kuala Lumpur, Selangor, Puchong, KLCC, or paste a SPEEDHOME URL.
+        </p>
+      </section>
+
+      <section class="overview-grid" aria-label="Search overview">
+        <article class="metric-card">
+          <span>Total units found</span>
+          <strong id="metricTotal">0</strong>
+        </article>
+        <article class="metric-card">
+          <span>Average monthly rent</span>
+          <strong id="metricAverage">RM 0</strong>
+        </article>
+        <article class="metric-card">
+          <span>Median rent</span>
+          <strong id="metricMedian">RM 0</strong>
+        </article>
+        <article class="metric-card">
+          <span>Most common rent</span>
+          <strong id="metricMode">RM 0</strong>
+        </article>
+      </section>
+
+      <section class="summary-section" aria-labelledby="summaryTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Price summary</p>
+            <h2 id="summaryTitle">Unit type comparison</h2>
+          </div>
+          <span id="activeAreaLabel" class="pill">Malaysia</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Unit type</th>
+                <th>Total units</th>
+                <th>Average</th>
+                <th>Median</th>
+                <th>Often shown</th>
+                <th>Fair price</th>
+                <th>Avg sqft</th>
+              </tr>
+            </thead>
+            <tbody id="summaryRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="listing-section" aria-labelledby="listingTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Listings</p>
+            <h2 id="listingTitle">Available homes</h2>
+          </div>
+          <div class="sort-control">
+            <i data-lucide="arrow-up-down"></i>
+            <select id="sortSelect" aria-label="Sort listings">
+              <option value="recommended">Recommended</option>
+              <option value="price-asc">Price: low to high</option>
+              <option value="price-desc">Price: high to low</option>
+              <option value="sqft-desc">Largest first</option>
+            </select>
+          </div>
+        </div>
+        <div id="listingGrid" class="listing-grid"></div>
+        <div id="emptyState" class="empty-state" hidden>
+          <i data-lucide="home"></i>
+          <h3>No listings found</h3>
+          <p>Try another apartment name, area, or SPEEDHOME URL.</p>
+        </div>
+      </section>
+    </main>
+
+    <template id="listingTemplate">
+      <a class="listing-card" target="_blank" rel="noreferrer">
+        <div class="listing-body">
+          <span class="badge">SPEEDHOME</span>
+          <div class="listing-title-row">
+            <h3></h3>
+            <i data-lucide="arrow-up-right"></i>
+          </div>
+          <p class="listing-area"></p>
+          <div class="listing-specs"></div>
+          <div class="rent-grid"></div>
+          <div class="listing-footer">
+            <span class="furnishing"></span>
+            <span class="source"></span>
+          </div>
+        </div>
+      </a>
+    </template>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
