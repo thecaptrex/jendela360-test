@@ -308,12 +308,12 @@ async function searchHomespeed(query) {
 
   setStatus("Gathering public SPEEDHOME data...");
   const scrapeResult = await scrapeSpeedhome(currentQuery);
-  
+
   // Use only scraped results if successful, otherwise fall back to seed listings
   let toDisplay, fallbackNote;
   if (scrapeResult.blocked || !scrapeResult.listings.length) {
     toDisplay = seeded;
-    fallbackNote = " Live scraping was challenged, so Homespeed is using the seeded SPEEDHOME-derived demo set.";
+    fallbackNote = " Live scraping was challenged, please try again in 5-10 seconds";
   } else {
     toDisplay = dedupeListings(scrapeResult.listings);
     fallbackNote = ` Showing ${scrapeResult.listings.length} live scraped listing${scrapeResult.listings.length === 1 ? "" : "s"}.`;
@@ -378,7 +378,7 @@ function parseListingsFromText(rawText, sourceUrl) {
 
   const patterns = [
     // Strict pattern: name + size/type + beds + baths + parking + price
-    /(?:VERIFIED\s*)?(?:\W{0,4}\s*)?(?:(?:ZERO DEPOSIT|COOKING READY)\s+)*([A-Z0-9][A-Za-z0-9@.'()&/\-\s,]{3,90}?)\s+((?:\d{1,3}(?:,\d{3})?|\d{3,4})\s*sqft|(?:SMALL|MEDIUM|MASTER)\s+(?:SHARED|PRIVATE))\s+(\d+)\s+(\d+)\s+(\d+)?[\s\w&/@.'(),+\-]{0,180}?RM\s*([\d,]+)\s*\/\s*month/g,
+    /(?:VERIFIED\s*)?(?:\W{0,4}\s*)?(?:(?:ZERO DEPOSIT|COOKING READY)\s+)*([A-Z0-9][A-Za-z0-9@.'()&/\-\s,]{3,90}?)\s*(?:,\s*)?((?:\d{1,3}(?:,\d{3})?|\d{3,4})\s*sqft|(?:SMALL|MEDIUM|MASTER)\s+(?:SHARED|PRIVATE))\s+(\d+)\s+(\d+)\s+(\d+)?[\s\w&/@.'(),+\-]{0,180}?RM\s*([\d,]+)\s*\/\s*month/g,
     // Flexible pattern: name + beds + baths + (maybe parking) + price (size optional)
     /(?:VERIFIED\s*)?(?:\W{0,4}\s*)?(?:(?:ZERO DEPOSIT|COOKING READY)\s+)*([A-Z0-9][A-Za-z0-9@.'()&/\-\s,]{3,90}?)\s+(\d+)\s+(\d+)\s+(\d+)?[\s\w&/@.'(),+\-]{0,120}?RM\s*([\d,]+)\s*\/\s*month/g,
     // Loose pattern: name + RM price (minimal requirements)
@@ -414,6 +414,14 @@ function parseListingsFromText(rawText, sourceUrl) {
       const dedupeKey = `${rawName}|${price}`.toLowerCase();
       if (processedKeys.has(dedupeKey)) continue;
       processedKeys.add(dedupeKey);
+
+      if (!rawSize) {
+        const fallbackSizeMatch = rawName.match(/(\d{1,3}(?:,\d{3})*)\s*sq\s*ft/i);
+        if (fallbackSizeMatch) {
+          rawSize = fallbackSizeMatch[0];
+          rawName = rawName.replace(fallbackSizeMatch[0], "").replace(/\s*,?\s*$/, "").trim();
+        }
+      }
 
       const roomType = rawSize && /SMALL|MEDIUM|MASTER/i.test(rawSize);
       const sqft = roomType ? estimateRoomSize(rawSize) : (rawSize ? Number(rawSize.replace(/[^\d]/g, "")) : 0);
@@ -535,9 +543,42 @@ function estimateRoomSize(rawSize) {
   return 100;
 }
 
+function isSizeSegment(value) {
+  return /^\d{1,3}(?:,\d{3})*\s*sq\s*ft[,\.]?$/i.test(String(value).trim());
+}
+
+function splitCommaSegments(text) {
+  const parts = [];
+  let current = "";
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    if (char === ",") {
+      const prev = text[i - 1] || "";
+      const next = text[i + 1] || "";
+      if (/\d/.test(prev) && /\d/.test(next)) {
+        current += char;
+        continue;
+      }
+      parts.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts.map((part) => part.replace(/[.,]+$/, "")).filter(Boolean);
+}
+
 function inferArea(name, sourceUrl) {
-  const parts = name.split(",").map((part) => part.trim()).filter(Boolean);
-  if (parts.length > 1) return parts[parts.length - 1];
+  const parts = splitCommaSegments(String(name));
+
+  if (parts.length > 1) {
+    const textParts = parts.filter((part) => !isSizeSegment(part));
+    if (textParts.length) {
+      return textParts[textParts.length - 1];
+    }
+    return parts[0];
+  }
   const slug = sourceUrl.split("/").filter(Boolean).pop() || "malaysia";
   return slug.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
@@ -569,15 +610,19 @@ async function fetchAutocompleteSuggestions(keywords) {
     });
     if (!response.ok) return [];
     const data = await response.json();
-    const propertyNames = data.LOCATION.map(p => p.label)
-      console.log(data.LOCATION);
-      // console.log(items);
-      const labels = data.LOCATION.map(p => p.label)
+    const labels = [
+      ...(data.PROPERTY || []),
+      ...(data.LOCATION || [])
+    ].map(item => item.label);
+    // const propertyNames = data.LOCATION.map(p => p.label)
+    // console.log(data.LOCATION);
+    // console.log(items);
+    // const labels = data.LOCATION.map(p => p.label)
     // const labels = items
     //   .map((item) => (typeof item === "string" ? item : item?.label || item?.name || ""))
     //   .filter((label) => typeof label === "string" && label.trim())
     //   .map((label) => label.trim());
-       console.log(labels); 
+    console.log(labels);
     return [...new Set(labels)].slice(0, 12);
   } catch (error) {
     return [];
@@ -656,17 +701,17 @@ function createXlsxBlob(rows) {
     <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
       <sheetData>
         ${sheetRows
-          .map(
-            (row, rowIndex) => `<row r="${rowIndex + 1}">
+      .map(
+        (row, rowIndex) => `<row r="${rowIndex + 1}">
               ${row
-                .map((value, columnIndex) => {
-                  const cell = `${columnName(columnIndex + 1)}${rowIndex + 1}`;
-                  return `<c r="${cell}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
-                })
-                .join("")}
+            .map((value, columnIndex) => {
+              const cell = `${columnName(columnIndex + 1)}${rowIndex + 1}`;
+              return `<c r="${cell}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
+            })
+            .join("")}
             </row>`,
-          )
-          .join("")}
+      )
+      .join("")}
       </sheetData>
     </worksheet>`;
 
@@ -852,9 +897,9 @@ els.form.addEventListener("submit", (event) => {
 
 els.input.addEventListener("input", async () => {
   const value = cleanQuery(els.input.value);
-  
+
   clearTimeout(autocompleteTimer);
-  
+
   if (!value) {
     currentQuery = "";
     setStatus("Ready. Search a place like Kuala Lumpur, Selangor, Puchong, KLCC, or paste a SPEEDHOME URL.");
