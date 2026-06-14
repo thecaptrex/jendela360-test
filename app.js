@@ -584,13 +584,23 @@ function inferArea(name, sourceUrl) {
 }
 
 function inferFurnishing(text, match, fallbackText = "") {
-  const start = Math.max(0, match.index - 800);
-  const end = Math.min(text.length, match.index + match[0].length + 800);
+  // Expand search window from 800 to 2000 characters for better context capture
+  const start = Math.max(0, match.index - 2000);
+  const end = Math.min(text.length, match.index + match[0].length + 2000);
   const nearby = `${text.slice(start, end)} ${fallbackText}`;
-  if (/fully furnished/i.test(nearby)) return "Fully Furnished";
-  if (/partially furnished/i.test(nearby) || /partialy furnished/i.test(nearby)) return "Partially Furnished";
-  if (/\bnot\s+furnished\b/i.test(nearby) || /unfurnished/i.test(nearby)) return "Not Furnished";
+  
+  // Check for unfurnished patterns first (most specific negative case)
+  if (/\bunfurnished\b/i.test(nearby) || /\bnot\s+furnished\b/i.test(nearby)) return "Unfurnished";
+  
+  // Check for partially furnished patterns (middle ground)
+  if (/partially\s+furnished/i.test(nearby) || /partialy\s+furnished/i.test(nearby) || /semi[\s-]?furnished/i.test(nearby)) return "Partially Furnished";
+  
+  // Check for fully furnished patterns (most specific positive case)
+  if (/fully\s+furnished/i.test(nearby) || /^furnished$/i.test(nearby.trim())) return "Fully Furnished";
+  
+  // Check for generic furnished (less specific, might be fully or partially)
   if (/\bfurnished\b/i.test(nearby)) return "Fully Furnished";
+  
   return "Furniture status unavailable";
 }
 

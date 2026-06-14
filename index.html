@@ -33,9 +33,9 @@
             Search apartments, compare rents by bedroom type, and export SPEEDHOME listing data without requiring visitors to sign in.
           </p>
           <div class="hero-metrics" aria-label="Homespeed highlights">
-            <span><strong id="heroListingCount">0</strong> listings indexed</span>
-            <span><strong id="heroAreaCount">0</strong> areas</span>
-            <span><strong>CSV</strong> + <strong>XLSX</strong> export</span>
+            <span hidden><strong id="heroListingCount">0</strong> listings indexed</span>
+            <span hidden><strong id="heroAreaCount">0</strong> areas</span>
+            <span hidden><strong>CSV</strong> + <strong>XLSX</strong> export</span>
           </div>
         </div>
         <div class="hero-media" aria-label="Premium apartment interior preview">
@@ -72,11 +72,11 @@
           </button>
         </form>
         <div class="search-controls">
-          <label class="switch">
-            <input id="liveScrapeToggle" type="checkbox" checked />
-            <span>Live scrape attempt</span>
+          <label class="switch" hidden>
+            <input id="liveScrapeToggle" type="checkbox" checked / hidden>
+            <span hidden>Live scrape attempt</span>
           </label>
-          <div class="export-actions" aria-label="Download listing data">
+          <div class="export-actions" aria-label="Download listing data" hidden>
             <button id="downloadCsv" class="secondary-button" type="button">
               <i data-lucide="file-down"></i>
               CSV
@@ -156,8 +156,8 @@
         <div id="listingGrid" class="listing-grid"></div>
         <div id="emptyState" class="empty-state" hidden>
           <i data-lucide="home"></i>
-          <h3>No listings found</h3>
-          <p>Try another apartment name, area, or SPEEDHOME URL.</p>
+          <h3>Yardillo Paulus</h3>
+          <p>This web application is only for technical assessment purposes not for commercial use.</p>
         </div>
       </section>
     </main>

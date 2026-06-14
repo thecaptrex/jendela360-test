@@ -223,6 +223,13 @@ body.dark .pill {
   background: rgba(255, 255, 255, 0.04);
 }
 
+body.dark .media-panel,
+body.dark .media-panel span,
+body.dark .media-panel small,
+body.dark .media-panel strong {
+  color: #24312b;
+}
+
 .hero-metrics strong,
 .media-panel strong {
   color: var(--text);
